@@ -1,6 +1,7 @@
 # Ignore all RData files
 RData/*.RData
 
-# ignore Simulation_PreProcessing.R
+# ignore Simulation_PreProcessing.R and Some_Top_TED_Work.R
 Codes/Simulation_PreProcessing.R
+Codes/Some_Top_TED_Work.R
 .Rproj.user

@@ -318,15 +318,7 @@ for(i in 1:length(delta_mu)) {
             plot.title = element_text(hjust = 0.5)) + 
       ggtitle(paste0("Location Shift = ", delta_mu[i]))
     scenario1_plots[[i]] <- p1
-    #plot(ddat, pch = 19, col = 2, main = "", 
-    #     xlab = " ", ylab = " ", xaxt = "n", yaxt = "n", bty = "l", cex = 2.4
-    #)
     
-    #mtext(paste0("Location Shift = ", delta_mu[i]), side = 3, line = 1, cex = 1.5)
-    #mtext("Trait 1", side = 1, line = 3, cex = 3)
-    #mtext("Trait 2", side = 2, line = 1, cex = 3)
-    #axis(side = 1, labels = F, col.ticks = NA)
-    #axis(side = 2, labels = F, col.ticks = NA)
     
   } else if(delta_mu[i] %in% c(3, 9)) {
     
@@ -349,15 +341,7 @@ for(i in 1:length(delta_mu)) {
       ggtitle(paste0("Location Shift = ", delta_mu[i]))
     
     scenario1_plots[[j]] <- p2
-    #plot(ddat, pch = 19, col = 2, main = "", 
-    #     xlab = " ", ylab = " ", xaxt = "n", yaxt = "n", bty = "l", cex = 2.4
-    #)
-    # label axis
-    #mtext(paste0("Location Shift = ", delta_mu[i]), side = 3, line = 1, cex = 1.5)
-    #mtext("Trait 1", side = 1, line = 3, cex = 3)
-    #mtext("Trait 2", side = 2, line = 1, cex = 3)
-    #axis(side = 1, labels = F, col.ticks = NA)
-    #axis(side = 2, labels = F, col.ticks = NA)
+    
   }
   
 }
@@ -801,26 +785,26 @@ sceneraio_2 <- rescale(rmvnorm(20, mean = c(5, 5), sigma = matrix(c(0.85, 0.005,
 )
 
 ############### New plots
-png(filename = "../../Other Presentations/Trait_Diversity_Indices_all.png", 
-    width = 1800, height = 1500)
+png(filename = "Figures/Trait_Diversity_Indices_all.png", 
+    width = 1800, height = 1800)
 par(mfrow = c(3, 2))
 # FRic
 covhull <- chull(sceneraio_2)
-plot(sceneraio_2, pch = 20, col = 1, cex = 7.5, type = "p", 
+plot(sceneraio_2, pch = 20, col = 1, cex = 10, type = "p", 
      bty = "l", xlab = "", ylab = "", ylim = c(0, 1.1),
      xaxt = "n", yaxt = "n"
     )
-polygon(sceneraio_2[covhull, ], lwd = 4, border = "red")
+polygon(sceneraio_2[covhull, ], lwd = 4, border = "black")
 points(sceneraio_2, pch = 20, col = 1, cex = 7.5)
 axis(side = 1, labels = F, col.ticks = NA, col = NA)
 axis(side = 2, labels = F, col.ticks = NA, col = NA)
 mtext("Trait 1", side = 1, line = 3, cex = 2.5)
 mtext("Trait 2", side = 2, line = 1, cex = 2.5)
 text(x = min(sceneraio_2[,1]), y = 1.1, "a", family = "sans", 
-     font = 2, cex = 3)
+     font = 2, cex = 4)
 
-# TOp
-plot(sceneraio_2, pch = 20, col = 1, cex = 7.5, type = "p", 
+# TOP
+plot(sceneraio_2, pch = 20, col = 1, cex = 10, type = "p", 
      bty = "l", xlab = "", ylab = "", ylim = c(0, 1.1),
      xaxt = "n", yaxt = "n"
 )
@@ -833,8 +817,8 @@ sceneraio_2b <- sceneraio_2
 while(TRUE) {
   i <- i+1
   covhull <- chull(sceneraio_2b)
-  polygon(sceneraio_2b[covhull, ], lwd = 4, border = i)#
-  points(sceneraio_2b[covhull, ], pch = 20, col = 1, cex = 7.5)
+  polygon(sceneraio_2b[covhull, ], lwd = 4, border = "black")#
+  points(sceneraio_2b[covhull, ], pch = 20, col = 1, cex = 10)
   sceneraio_2b <- sceneraio_2b[-covhull, ]
   if(class(sceneraio_2b) != "matrix") {
     break
@@ -844,13 +828,13 @@ while(TRUE) {
   
 }
 text(x = min(sceneraio_2[,1]), y = 1.1, "b", family = "sans", 
-     font = 2, cex = 3)
+     font = 2, cex = 4)
 
 # FEve
 plot(ComputeMST(sceneraio_2), xaxt = "n", yaxt = "n", ylab = "", xlab = "", 
      pch = 20, ylim = c(0, 1.1),
-     bty = "l", col.pts = 1, cex = 7.5, 
-     col.segts = 1, lty = 5, lwd = 3)
+     bty = "l", col.pts = 1, cex = 10, 
+     col.segts = 1, lty = 5, lwd = 5)
 axis(side = 1, labels = F, col.ticks = NA, col = NA)
 axis(side = 2, labels = F, col.ticks = NA, col = NA)
 mtext("Trait 1", side = 1, line = 3, cex = 2.5)
