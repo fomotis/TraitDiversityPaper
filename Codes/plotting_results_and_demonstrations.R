@@ -475,12 +475,14 @@ plot1_app1 <- X  %>% ggplot(aes(x = Trait1, y = Trait2, group = 1)) +
   labs( x = "Trait 1", y = "Trait 2") + 
   theme_bw() + 
   theme(  axis.title = element_text(size = 50, face = "bold"), 
-          axis.text = element_text(size = 40, face = "bold")
+          axis.text = element_text(size = 40, face = "bold"),
+          title = element_text(size = 40, face = "bold")
           ) + 
   geom_segment( aes(x = 3.01, y = 3.01, xend = 4.95, yend = 4.95), 
                 arrow = arrow(angle = 45, length = unit(0.4, "inches")),
                 size = 5, linetype = "solid"
-              )
+              ) + 
+  ggtitle("A")
 
 appendix1 <- lapply(seq(3, 5, by = 0.05), function(i) {
   
@@ -495,19 +497,165 @@ plot2_app1 <- appendix1 %>% ggplot(aes(x = Distance_to_start, y = TOP, group = 1
   geom_point(size = 10, color = "black") + 
   labs(x = "Distance to c(3, 3)", y = "TOP") + 
   theme_bw() + 
-  theme(  axis.title = element_text(size = 50, face = "bold"), 
+  theme(  axis.title = element_text(size = 50, face = "bold"),
+          title = element_text(size = 40, face = "bold"),
           axis.text = element_text(size = 40, face = "bold")
   ) + scale_x_continuous(
     breaks = seq(0, 2.85, by = 0.2)
-    )
+    ) + 
+  ggtitle("B")
 appendix1_plots <-  ggarrange(plot1_app1, plot2_app1, ncol = 2, hjust = 0.1, align = 'h')
 ggsave(filename = "Figures/TOP_Appendix1.png", plot = appendix1_plots, 
        width = 40, height = 20)
 
 
-#### plots in Appendix A2
+################## plots in Appendix A2
 
+Tsdata1 <- matrix(NA, ncol = 2, nrow = 50)
+Tsdata1 <-  apply(Tsdata1, 2, function(x) runif(50, 0, 1))
 
+bmat1 <- as.data.frame(base_traitmatrix(basetype = "cube", ncols = 2, 
+                          dsize = 50))
+bmat2 <- as.data.frame(Tsdata1)
+names(bmat1) <- names(bmat2) <- c("Trait 1", "Trait 2")
+bdata <- data.frame(rbind(bmat1, bmat2), Type = c(rep("Discrete-Uniform (TED)", 
+                                                      nrow(bmat1)), rep("Continuous-Uniform (TEDM)", nrow(bmat2))))
+
+tplot1 <- bdata %>%
+  ggplot(aes(Trait.1, Trait.2)) + 
+  geom_point(size = 10) + 
+  theme_bw() +
+  facet_wrap(.~Type) +
+  labs(x = "Trait 1", y = "Trait 2") +
+  theme(strip.text = element_text(size = 60, face = "bold"),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(), 
+        axis.title = element_text(size = 50, face = "bold"), 
+        title = element_text(size = 40, face = "bold"),
+        plot.title = element_text(hjust = -0.002),
+        panel.spacing = unit(5, "lines"))
+  
+bmat1_dist <- as.matrix(dist(bmat1, diag = F, upper = T))
+bmat1_dist <- as.numeric(bmat1_dist[base::upper.tri(bmat1_dist)])
+bmat1_density <- density(bmat1_dist, from = min(bmat1_dist), to = max(bmat1_dist))
+
+bmat2_dist <- as.matrix(dist(bmat2, diag = F, upper = T))
+bmat2_dist <- as.numeric(bmat2_dist[base::upper.tri(bmat2_dist)])
+bmat2_density <- density(bmat2_dist, from = min(bmat2_dist), to = max(bmat2_dist))
+
+bdata2 <- data.frame(X = c(bmat1_density$x, bmat2_density$x), 
+           Y = c(bmat1_density$y, bmat2_density$y),
+           Type = c(rep("Discrete-Uniform (TED)", length(bmat1_density$x)), rep("Continuous-Uniform (TEDM)", length(bmat2_density$x)))
+           )
+tplot2 <- bdata2 %>%
+  ggplot(aes(X, Y)) + 
+  geom_line(size = 10) + 
+  theme_bw() +
+  facet_wrap(.~Type) +
+  labs(x = "Distance", y = "Density") +
+  theme(strip.text = element_text(size = 60, face = "bold"),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(), 
+        axis.title = element_text(size = 50, face = "bold"), 
+        title = element_text(size = 40, face = "bold"),
+        plot.title = element_text(hjust = -0.002),
+        panel.spacing = unit(5, "lines"))
+
+a2plot <- ggarrange(tplot1, tplot2, nrow = 2, hjust = 0.1, align = 'h')
+ggsave(filename = "Figures/tedm_motivation.png", plot = a2plot, 
+       width = 30, height = 30)
+
+#### plots in Appendix A3
+
+#middle and distance to the center
+xbar <- apply(Tsdata1, 2, mean)
+dist_mean <- apply(Tsdata1 , 1, function(x) {
+  eucldis(x - xbar)
+})
+
+gendata <- function(delete) {
+  tobe_sampled <- which(dist_mean <= quantile(dist_mean, probs = delete))
+  deltas <- sapply(tobe_sampled, dts <- function(j, b, xbar) {
+    
+    environment(d_eq) <- environment()
+    environment(d_jb) <- environment()
+    
+    x <- Tsdata1[j, ]
+    b <- b - dist_mean[j]
+    d <- dist_mean[j]
+    xbar <- xbar
+    
+    delta_start <- c(b^2, b^2)
+    
+    ds <- nleqslv::nleqslv(x = delta_start,
+                           fn = d_eq,
+                           jac = d_jb,
+                           control=list(btol=.01, delta="newton")
+    )
+    ds$x
+    
+  }, b = min(dist_mean[-tobe_sampled]), xbar = xbar)
+  
+  
+  Tsdata12 <- Tsdata1
+  Tsdata12[tobe_sampled, ] <- Tsdata1[tobe_sampled, ] + t(deltas)
+  
+  #distance distribution for Tsdata12
+  orig_dist <- as.matrix(dist(Tsdata12, diag = F, upper = T))
+  orig_dist <- as.numeric(orig_dist[base::upper.tri(orig_dist)])
+  orig_density <- density(orig_dist, from = min(orig_dist), to = max(orig_dist))
+  
+  #distance distribution for TED
+  bmat1 <- base_traitmatrix(basetype = "cube", ncols = ncol(Tsdata12), 
+                            dsize = nrow(Tsdata12))
+  bmat1_dist <- as.matrix(dist(bmat1, diag = F, upper = T))
+  bmat1_dist <- as.numeric(bmat1_dist[base::upper.tri(bmat1_dist)])
+  bmat1_density <- density(bmat1_dist, from = min(bmat1_dist), to = max(bmat1_dist))
+  
+  #distance distribution for TEDM
+  bmat2 <- base_traitmatrix_new(Tsdata12, gen_matrix = gen_matrix, 
+                                rescale = T, parallel = F)
+  bmat2_dist <- as.matrix(dist(bmat2, diag = F, upper = T))
+  bmat2_dist <- as.numeric(bmat2_dist[base::upper.tri(bmat2_dist)])
+  bmat2_density <- density(bmat2_dist, from = min(bmat2_dist), to = max(bmat2_dist))
+  
+  appendix3 <- data.frame(X = c(orig_density$x, bmat1_density$x, bmat2_density$x),
+                          Y = c(orig_density$y, bmat1_density$y, bmat2_density$y),
+                          Distance_Distribution = c(rep("Observed", length(orig_density$x)), 
+                                                    rep("TED", length(bmat1_density$x)), 
+                                                    rep("TEDM", length(bmat2_density$x)) 
+                                                    )
+  )
+  appendix3 <- cbind(appendix3, Delete = rep(paste0("Shifted = ", delete*100, "%"), nrow(appendix3)))
+  return(appendix3)
+}
+
+appendix3 <- rbind(gendata(delete = 0),
+            gendata(delete = 0.1),
+            gendata(delete = 0.3)
+)
+
+app3 <- appendix3 %>% ggplot(aes(x = X, y = Y, group = Distance_Distribution, color = Distance_Distribution)) + 
+  geom_line(size = 10) + 
+  theme_bw() + 
+  facet_wrap(. ~ Delete, scales = "fixed") +
+  labs(x = "Distance", y = "Density", color = "Distribution") + 
+  theme(  strip.text = element_text(size = 60, face = "bold"),
+          axis.line.y = element_blank(), 
+          axis.ticks.x = element_blank(),
+          axis.text = element_text(size = 60, face = "bold"),
+          axis.title = element_text(size = 70, face = "bold"), 
+          legend.text = element_text(size = 60, face = "bold"),
+          legend.title = element_text(size = 60, face = "bold"), 
+          legend.position = "top", 
+          legend.direction = "horizontal",
+          panel.spacing = unit(5, "lines")
+  )
+
+ggsave(filename = "Figures/ted_explanation2.png", plot = app3, 
+       width = 30, height = 30)
+
+############ plots in Appendix A4
 
 
 ########################## Plotting simulation Results ###################################
@@ -574,38 +722,47 @@ results_s1 <- lapply(Results_comm, t_func, rescale = FALSE) %>%
     )
   ) %>% 
   mutate(
-    M_rescaled = zero_one(M, group_var = Index, group = unique(Index))
+    M_rescaled = zero_one(M, group_var = Index, group = unique(Index)),
+    SD_rescaled = zero_one(SD,  group_var = Index, group = unique(Index)),
+    LCL = M - SD,
+    UCL = M + SD
+  ) %>% 
+  mutate(
+    
+    LCL_rescaled = zero_one(LCL, group_var = Index, group = unique(Index)),
+    UCL_rescaled = zero_one(UCL, group_var = Index, group = unique(Index))
+    
   )
 
 results_s1$M_rescaled[results_s1$Index == "TOP"] <- jitter(results_s1$M_rescaled[results_s1$Index == "TOP"], amount = 0.008)
 
 #expectations for evenness
-exp_evenness <- data.frame(M = c(seq(0.8, 1, length = 7), seq(1, 0.25, length = 21-7)), SD = rep(0, 21), Index = rep("Expected", 21), 
-               Manipulate = delta_mu, Index_Type = "Evenness",  
-               M_rescaled = c(seq(0.8, 1, length = 7), seq(1, 0.25, length = 21-7)))
+#exp_evenness <- data.frame(M = c(seq(0.8, 1, length = 7), seq(1, 0.25, length = 21-7)), SD = rep(0, 21), Index = rep("Expected", 21), 
+#               Manipulate = delta_mu, Index_Type = "Evenness",  
+#               M_rescaled = c(seq(0.8, 1, length = 7), seq(1, 0.25, length = 21-7)))
 
 #expectaion for divergence
-exp_divergence <- data.frame(M = seq(0.1, 1, length = 21), SD = rep(0, 21), Index = rep("Expected", 21), 
-              Manipulate = delta_mu, Index_Type = "Divergence",  
-              M_rescaled = seq(0.1, 1, length = 21))
+#exp_divergence <- data.frame(M = seq(0.1, 1, length = 21), SD = rep(0, 21), Index = rep("Expected", 21), 
+#              Manipulate = delta_mu, Index_Type = "Divergence",  
+#              M_rescaled = seq(0.1, 1, length = 21))
 
 #expectaion for richness
-exp_richness <- data.frame(M = seq(0.1, 1, length = 21), SD = rep(0, 21), Index = rep("Expected", 21), 
-              Manipulate = delta_mu, Index_Type = "Richness",  
-              M_rescaled = seq(0.1, 1, length = 21))
+#exp_richness <- data.frame(M = seq(0.1, 1, length = 21), SD = rep(0, 21), Index = rep("Expected", 21), 
+#              Manipulate = delta_mu, Index_Type = "Richness",  
+#              M_rescaled = seq(0.1, 1, length = 21))
 
-plot_data1 <- rbind(results_s1, exp_evenness, exp_divergence, exp_richness)
+#plot_data1 <- rbind(results_s1, exp_evenness, exp_divergence, exp_richness)
 
-bp1 <- c(FDIS = "#1B9E77", RAO = "#D95F02", 
-                 FRIC = "#7570B3", TOP = "#E7298A", TOPM = "#66A61E", 
-                 FEVE = "#E6AB02", TED = "#A6761D", TEDM = "#CC79A7", 
-         Expected = "#000000")
+#bp1 <- c(FDIS = "#1B9E77", RAO = "#D95F02", 
+#                 FRIC = "#7570B3", TOP = "#E7298A", TOPM = "#66A61E", 
+#                 FEVE = "#E6AB02", TED = "#A6761D", TEDM = "#CC79A7", 
+#         Expected = "#000000")
 
 results_s1 %>% ggplot(aes(x = Manipulate, y = M_rescaled, group = Index, color = Index)) + 
   geom_line(size = 3) +
   facet_wrap(. ~ Index_Type) + 
   scale_color_manual(values = bp1) + 
-  theme_bw()
+  theme_bw()  + scale_y_continuous(breaks = seq(0.6, 1.0, by = 0.05))
   
 
 ######### scenario two ############
@@ -613,7 +770,7 @@ results_s2 <- lapply(Results_comm22, t_func, rescale = FALSE) %>%
   do.call(rbind.data.frame, .)  %>%
   mutate(
     Index = t_func2(c("FRIC","TOP", "TOPM", "FEVE", "TED", "TEDM", "RAO", "FDIS"), tims = 6),
-    Manipulate = t_func2(c(0, delete), each = 8)
+    Manipulate = t_func2(c(0, delete), each = 8)*100
   ) %>% 
   mutate(
     Index_Type = case_when(
@@ -621,37 +778,43 @@ results_s2 <- lapply(Results_comm22, t_func, rescale = FALSE) %>%
       Index %in% c("FEVE", "TED", "TEDM") ~ "Evenness",
       Index %in% c("RAO", "FDIS") ~ "Divergence"
     )
+  )  %>% 
+  mutate(
+    M_rescaled = zero_one(M, group_var = Index, group = unique(Index)),
+    LCL = M - SD,
+    UCL = M + SD
   ) %>% 
   mutate(
-    M_rescaled = zero_one(M, group_var = Index, group = unique(Index))
+    
+    LCL_rescaled = zero_one(LCL, group_var = Index, group = unique(Index)),
+    UCL_rescaled = zero_one(UCL, group_var = Index, group = unique(Index))
   )
 results_s2$M_rescaled[results_s2$Index == "TOP"] <- jitter(results_s2$M_rescaled[results_s2$Index == "TOP"], amount = 0.008)
 
 #expectations for evenness
-exp_evenness <- data.frame(M = seq(1, 0.1, length = 5), SD = rep(0, 5), Index = rep("Expected", 5), 
-                           Manipulate = delete, Index_Type = "Evenness",  
-                           M_rescaled = seq(1, 0, length = 5))
-
-#expectaion for divergence
-exp_divergence <- data.frame(M = seq(0.1, 1, length = 5), SD = rep(0, 5), Index = rep("Expected", 5), 
-                             Manipulate = delete, Index_Type = "Divergence",  
-                             M_rescaled = seq(0, 1, length = 5))
-
-#expectaion for richness
-exp_richness <-  data.frame(M = seq(1, 0.1, length = 5), SD = rep(0, 5), Index = rep("Expected", 5), 
-                            Manipulate = delete, Index_Type = "Richness",  
-                            M_rescaled = seq(1, 0.1, length = 5))
-
-plot_data2 <- rbind(results_s2, exp_evenness, exp_divergence, exp_richness)
+# exp_evenness <- data.frame(M = seq(1, 0.1, length = 5), SD = rep(0, 5), Index = rep("Expected", 5), 
+#                            Manipulate = delete, Index_Type = "Evenness",  
+#                            M_rescaled = seq(1, 0, length = 5))
+# 
+# #expectaion for divergence
+# exp_divergence <- data.frame(M = seq(0.1, 1, length = 5), SD = rep(0, 5), Index = rep("Expected", 5), 
+#                              Manipulate = delete, Index_Type = "Divergence",  
+#                              M_rescaled = seq(0, 1, length = 5))
+# 
+# #expectaion for richness
+# exp_richness <-  data.frame(M = seq(1, 0.1, length = 5), SD = rep(0, 5), Index = rep("Expected", 5), 
+#                             Manipulate = delete, Index_Type = "Richness",  
+#                             M_rescaled = seq(1, 0.1, length = 5))
+# 
+# plot_data2 <- rbind(results_s2, exp_evenness, exp_divergence, exp_richness)
 
 results_s2 %>% ggplot(aes(x = Manipulate, y = M_rescaled, group = Index, color = Index)) + 
   geom_line(size = 3) +
   facet_wrap(. ~ Index_Type) + 
   scale_color_manual(values = bp1) + 
-  theme_bw()
+  theme_bw() + scale_y_continuous(breaks = seq(0.6, 1.0, by = 0.015))
 
 ######### scenario three ############
-
 results_s3 <- lapply(Results_samp, t_func, rescale = FALSE) %>% 
   do.call(rbind.data.frame, .)  %>%
   mutate(
@@ -666,7 +829,14 @@ results_s3 <- lapply(Results_samp, t_func, rescale = FALSE) %>%
     )
   ) %>% 
   mutate(
-    M_rescaled = zero_one(M, group_var = Index, group = unique(Index))
+    M_rescaled = zero_one(M, group_var = Index, group = unique(Index)),
+    LCL = M - SD,
+    UCL = M + SD
+  ) %>% 
+  mutate(
+    
+    LCL_rescaled = zero_one(LCL, group_var = Index, group = unique(Index)),
+    UCL_rescaled = zero_one(UCL, group_var = Index, group = unique(Index))
   )
 
 results_s3 %>% ggplot(aes(x = Manipulate, y = M_rescaled, group = Index, color = Index)) + 
@@ -709,8 +879,8 @@ results_main <- combined_result %>% ggplot(aes(x = Manipulate, y = M_rescaled, g
         legend.text = element_text(size = 60, face = "bold"),
         legend.title = element_text(size = 60, face = "bold"), 
         legend.position = "top", 
-        legend.direction = "horizontal") + 
-  theme(panel.spacing = unit(5, "lines"))
+        legend.direction = "horizontal",
+        panel.spacing = unit(5, "lines"))
 
 ggsave(filename = "Figures/results_main.png", plot =results_main, 
        width = 30, height = 30)
@@ -722,7 +892,7 @@ p1 <- combined_result %>% filter(Scenario == "Scenario One") %>% ggplot(aes(x = 
   facet_wrap(Scenario ~ Index_Type, scales = "free_x") + 
   scale_color_manual(values = bp1) + 
   theme_bw() + 
-  labs(y = "", x = "Location Shift")+
+  labs(y = "", x = "Location shift")+
   theme(strip.text = element_text(size = 60, face = "bold"),
         axis.line.y = element_blank(), 
         axis.ticks.x = element_blank(),
@@ -735,12 +905,12 @@ p1 <- combined_result %>% filter(Scenario == "Scenario One") %>% ggplot(aes(x = 
   theme(panel.spacing = unit(5, "lines"))
 
 p2 <- combined_result %>% filter(Scenario == "Scenario Two") %>% 
-  ggplot(aes(x = Manipulate, y = M_rescaled, group = Index, color = Index)) + 
+  ggplot(aes(x = Manipulate*100, y = M_rescaled, group = Index, color = Index)) + 
   geom_line(size = 8) +
   facet_wrap(Scenario ~ Index_Type, scales = "free_x") + 
   scale_color_manual(values = bp1) + 
   theme_bw() + 
-  labs(y = "Index Value", x = "% Shifted Outward")+
+  labs(y = "Index Value", x = "Percentage shifted outward")+
   theme(strip.text = element_text(size = 60, face = "bold"),
         axis.line.y = element_blank(), 
         axis.ticks.x = element_blank(),
@@ -757,7 +927,7 @@ p3 <- combined_result %>% filter(Scenario == "Scenario Three") %>%
   facet_wrap(Scenario ~ Index_Type, scales = "free_x") + 
   scale_color_manual(values = bp1) + 
   theme_bw() + 
-  labs(y = "", x = "Number of Individuals (in thousands)")+
+  labs(y = "", x = "Number of individuals (in thousands)")+
   theme(strip.text = element_text(size = 60, face = "bold"),
         axis.line.y = element_blank(), 
         axis.ticks.x = element_blank(),
@@ -773,4 +943,141 @@ ggsave(filename = "Figures/results_main.png", plot =results_main,
        width = 30, height = 30)
 
 
+######### Results with variability #################
 
+### scenario 1
+ms1 <- max_of_maxes(Results_comm)
+results_s1 <- lapply(Results_comm, t_func, rescale = TRUE, ms = ms1) %>% 
+  do.call(rbind.data.frame,.) %>%
+  mutate(
+    Index = t_func2(c("FRIC","TOP", "TOPM", "FEVE", "TED", "TEDM", "RAO", "FDIS"), tims = 21), 
+    Manipulate = t_func2(delta_mu, each = 8)
+  ) %>% 
+  mutate(
+    Index_Type = case_when(
+      Index %in% c("FRIC", "TOP", "TOPM") ~ "Richness",
+      Index %in% c("FEVE", "TED", "TEDM") ~ "Evenness",
+      Index %in% c("RAO", "FDIS") ~ "Divergence"
+    )
+  ) %>% 
+  mutate(
+    LCL = M - SD,
+    UCL = M + SD
+  ) 
+
+### scenario 2
+ms2 <- max_of_maxes(Results_comm22)
+results_s2 <- lapply(Results_comm22, t_func, rescale = TRUE, ms = ms2) %>% 
+  do.call(rbind.data.frame, .)  %>%
+  mutate(
+    Index = t_func2(c("FRIC","TOP", "TOPM", "FEVE", "TED", "TEDM", "RAO", "FDIS"), tims = 6),
+    Manipulate = t_func2(c(0, delete), each = 8)*100
+  ) %>% 
+  mutate(
+    Index_Type = case_when(
+      Index %in% c("FRIC", "TOP", "TOPM") ~ "Richness",
+      Index %in% c("FEVE", "TED", "TEDM") ~ "Evenness",
+      Index %in% c("RAO", "FDIS") ~ "Divergence"
+    )
+  ) %>% mutate(
+    LCL = M - SD,
+    UCL = M + SD
+  )
+
+#### scenario 3
+ms3 <- max_of_maxes(Results_samp)
+results_s3 <- lapply(Results_samp, t_func, rescale = TRUE, ms = ms3) %>% 
+  do.call(rbind.data.frame, .)  %>%
+  mutate(
+    Index = t_func2(c("FRIC","TOP", "TOPM", "FEVE", "TED", "TEDM", "RAO", "FDIS"), tims = 9),
+    Manipulate = t_func2(n_row/1000, each = 8)
+  ) %>% 
+  mutate(
+    Index_Type = case_when(
+      Index %in% c("FRIC", "TOP", "TOPM") ~ "Richness",
+      Index %in% c("FEVE", "TED", "TEDM") ~ "Evenness",
+      Index %in% c("RAO", "FDIS") ~ "Divergence"
+    )
+  ) %>% mutate(
+    LCL = M - SD,
+    UCL = M + SD
+  )
+
+#combine results
+combined_result <- rbind(results_s1, results_s2, results_s3) %>% 
+  mutate(
+    Scenario = c(rep("Scenario One", 168), 
+                 rep("Scenario Two", 48),
+                 rep("Scenario Three", 72)
+    )
+  )
+combined_result$Scenario <- factor(combined_result$Scenario, 
+                                   levels = c("Scenario One", "Scenario Two", "Scenario Three")
+)
+combined_result$Index <- factor(combined_result$Index, 
+                                levels = c("FDIS", "RAO", 
+                                           "FEVE", "TED", "TEDM", 
+                                           "FRIC", "TOP", "TOPM")
+)
+
+p1s <- combined_result %>% filter(Scenario == "Scenario One") %>% 
+  ggplot(aes(x = Manipulate, y = M, ymin =  LCL, ymax =  UCL, group = Index, color = Index)) + 
+  geom_errorbar(width = 0.1, size = 4, position = position_dodge(0.5)) +
+  geom_point(size = 9, position = position_dodge(0.5)) +
+  facet_wrap(Scenario ~ Index_Type, scales = "free") + 
+  scale_color_manual(values = bp1) + 
+  theme_bw() + 
+  labs(y = "", x = "Location shift") +
+  theme(strip.text = element_text(size = 60, face = "bold"),
+        axis.line.y = element_blank(), 
+        axis.ticks.x = element_blank(),
+        axis.text = element_text(size = 60, face = "bold"),
+        axis.title = element_text(size = 70, face = "bold"), 
+        legend.text = element_text(size = 60, face = "bold"),
+        legend.title = element_text(size = 60, face = "bold"), 
+        legend.position = "top", 
+        legend.direction = "horizontal") + 
+  theme(panel.spacing = unit(3, "lines")) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2))
+
+p2s <- combined_result %>% filter(Scenario == "Scenario Two") %>% 
+  ggplot(aes(x = Manipulate, y = M, ymin =  LCL, ymax =  UCL, group = Index, color = Index)) + 
+  geom_errorbar(width = 0.1, size = 4, position = position_dodge(0.5)) +
+  geom_point(size = 9, position = position_dodge(0.5)) +
+  facet_wrap(Scenario ~ Index_Type, scales = "free") + 
+  scale_color_manual(values = bp1) + 
+  theme_bw() + 
+  labs(y = "", x = "Percentage shifted outward") +
+  theme(strip.text = element_text(size = 60, face = "bold"),
+        axis.line.y = element_blank(), 
+        axis.ticks.x = element_blank(),
+        axis.text = element_text(size = 60, face = "bold"),
+        axis.title = element_text(size = 70, face = "bold"), 
+        legend.text = element_text(size = 60, face = "bold"),
+        legend.title = element_text(size = 60, face = "bold"), 
+        legend.position = "none", 
+        legend.direction = "horizontal") + 
+  theme(panel.spacing = unit(3, "lines"))
+
+p3s <- combined_result %>% filter(Scenario == "Scenario Three") %>% 
+  ggplot(aes(x = Manipulate, y = M, ymin =  LCL, ymax =  UCL, group = Index, color = Index)) + 
+  geom_errorbar(width = 0.1, size = 4, position = position_dodge(0.5)) +
+  geom_point(size = 9, position = position_dodge(0.5)) +
+  facet_wrap(Scenario ~ Index_Type, scales = "free") + 
+  scale_color_manual(values = bp1) + 
+  theme_bw() + 
+  labs(y = "", x = "Number of individuals (in thousands)") +
+  theme(strip.text = element_text(size = 60, face = "bold"),
+        axis.line.y = element_blank(), 
+        axis.ticks.x = element_blank(),
+        axis.text = element_text(size = 60, face = "bold"),
+        axis.title = element_text(size = 70, face = "bold"), 
+        legend.text = element_text(size = 60, face = "bold"),
+        legend.title = element_text(size = 60, face = "bold"), 
+        legend.position = "none", 
+        legend.direction = "horizontal") + 
+  theme(panel.spacing = unit(3, "lines")) + scale_x_continuous(breaks = seq(0, 3.5, by = 0.25))
+
+results_mains <-  ggarrange(p1s, p2s, p3s, nrow = 3, hjust = 0.1, align = 'hv')
+ggsave(filename = "Figures/results_mains.png", plot = results_mains, 
+       width = 30, height = 30)
